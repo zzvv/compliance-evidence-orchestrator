@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/zzvv/compliance-evidence-orchestrator/internal/domain"
+	"github.com/zzvv/compliance-evidence-orchestrator/internal/repository"
 	"time"
 )
 
@@ -41,11 +42,14 @@ func (s *EvidenceService) CreateBatch(ctx context.Context, command CreateBatchCo
 	if err := batch.Transition(domain.BatchSubmitted, "", now); err != nil {
 		return domain.ReviewBatch{}, err
 	}
-	if err := s.batches.SaveBatch(ctx, batch); err != nil {
-		return domain.ReviewBatch{}, err
-	}
 	receipt := domain.NewReceipt(s.ids.New("receipt"), batch.ID, domain.ReceiptSubmitted, "materials submitted for review", now)
-	if err := s.receipts.AppendReceipt(ctx, receipt); err != nil {
+	if committer, ok := s.batches.(repository.SubmissionCommitter); ok {
+		if err := committer.CommitSubmission(ctx, batch, receipt); err != nil {
+			return domain.ReviewBatch{}, err
+		}
+	} else if err := s.batches.SaveBatch(ctx, batch); err != nil {
+		return domain.ReviewBatch{}, err
+	} else if err := s.receipts.AppendReceipt(ctx, receipt); err != nil {
 		return domain.ReviewBatch{}, err
 	}
 	s.appendAudit(ctx, scope, batch.ID, "batch_submitted", command.Actor)
