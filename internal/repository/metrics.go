@@ -14,11 +14,14 @@ type Metrics struct {
 }
 
 func (s *Store) Metrics(ctx context.Context) (Metrics, error) {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return Metrics{}, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctxErr(ctx); err != nil {
+		return Metrics{}, err
+	}
 	metrics := Metrics{Evidence: len(s.evidence), Batches: len(s.batches), Notifications: len(s.notifications)}
 	for _, items := range s.receipts {
 		metrics.Receipts += len(items)

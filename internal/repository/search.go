@@ -15,11 +15,14 @@ type BatchFilter struct {
 }
 
 func (s *Store) SearchBatches(ctx context.Context, filter BatchFilter) ([]domain.ReviewBatch, error) {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return nil, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctxErr(ctx); err != nil {
+		return nil, err
+	}
 	values := make([]domain.ReviewBatch, 0)
 	for _, batch := range s.batches {
 		if filter.ProjectID != "" && batch.Scope.ProjectID != filter.ProjectID {
@@ -41,11 +44,14 @@ func (s *Store) SearchBatches(ctx context.Context, filter BatchFilter) ([]domain
 }
 
 func (s *Store) FindEvidenceByReference(ctx context.Context, scope domain.Scope, reference string) ([]domain.Evidence, error) {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return nil, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctxErr(ctx); err != nil {
+		return nil, err
+	}
 	needle := strings.TrimSpace(reference)
 	values := make([]domain.Evidence, 0)
 	for _, evidence := range s.evidence {
@@ -58,11 +64,14 @@ func (s *Store) FindEvidenceByReference(ctx context.Context, scope domain.Scope,
 }
 
 func (s *Store) CountByState(ctx context.Context, scope domain.Scope) (map[domain.BatchState]int, error) {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return nil, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctxErr(ctx); err != nil {
+		return nil, err
+	}
 	result := make(map[domain.BatchState]int)
 	for _, batch := range s.batches {
 		if batch.Scope == scope {

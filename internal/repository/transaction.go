@@ -14,11 +14,14 @@ type Snapshot struct {
 }
 
 func (s *Store) Snapshot(ctx context.Context) (Snapshot, error) {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return Snapshot{}, err
 	}
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := ctxErr(ctx); err != nil {
+		return Snapshot{}, err
+	}
 	snapshot := Snapshot{Receipts: map[string][]domain.Receipt{}, Audits: map[string][]domain.AuditEvent{}}
 	for _, value := range s.evidence {
 		snapshot.Evidence = append(snapshot.Evidence, value)
@@ -38,11 +41,14 @@ func (s *Store) Snapshot(ctx context.Context) (Snapshot, error) {
 	return snapshot, nil
 }
 func (s *Store) Restore(ctx context.Context, snapshot Snapshot) error {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctxErr(ctx); err != nil {
+		return err
+	}
 	s.evidence = map[string]domain.Evidence{}
 	s.batches = map[string]domain.ReviewBatch{}
 	s.receipts = map[string][]domain.Receipt{}

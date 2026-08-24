@@ -11,11 +11,14 @@ type SubmissionCommitter interface {
 }
 
 func (s *Store) CommitSubmission(ctx context.Context, batch domain.ReviewBatch, receipt domain.Receipt) error {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctxErr(ctx); err != nil {
+		return err
+	}
 	if _, exists := s.batches[batch.ID]; exists {
 		return domain.ErrConflict
 	}
@@ -27,11 +30,14 @@ func (s *Store) CommitSubmission(ctx context.Context, batch domain.ReviewBatch, 
 	return nil
 }
 func (s *Store) DeleteBatch(ctx context.Context, batchID string) error {
-	if err := ctx.Err(); err != nil {
+	if err := ctxErr(ctx); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := ctxErr(ctx); err != nil {
+		return err
+	}
 	if _, ok := s.batches[batchID]; !ok {
 		return domain.ErrNotFound
 	}
