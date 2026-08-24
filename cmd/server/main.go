@@ -21,9 +21,17 @@ func main() {
 	service := application.NewEvidenceService(store, store, store, notifier)
 	server := &http.Server{Addr: address(), Handler: transport.NewRouter(service)}
 	dispatcher := worker.NewDispatcher(service, 2*time.Second)
+	// The reaper periodically archives batches whose retention window has
+	// elapsed. Archival cascades to receipts, pending notifications and audit
+	// events so the dispatcher and audit trail never surface dead batches.
+	reaper := worker.NewReaper(func(ctx context.Context, now time.Time) error {
+		_, err := service.SweepExpiredBatches(ctx, now)
+		return err
+	}, time.Minute)
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go dispatcher.Run(ctx)
+	go reaper.Run(ctx)
 	go func() {
 		log.Printf("compliance evidence orchestrator listening on %s", server.Addr)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {

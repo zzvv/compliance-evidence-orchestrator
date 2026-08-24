@@ -5,6 +5,7 @@ import (
 	"github.com/zzvv/compliance-evidence-orchestrator/internal/domain"
 	"sort"
 	"sync"
+	"time"
 )
 
 type Store struct {
@@ -14,10 +15,39 @@ type Store struct {
 	receipts      map[string][]domain.Receipt
 	notifications map[string]domain.Notification
 	audits        map[string][]domain.AuditEvent
+	retention     domain.RetentionRule
 }
 
 func NewStore() *Store {
-	return &Store{evidence: map[string]domain.Evidence{}, batches: map[string]domain.ReviewBatch{}, receipts: map[string][]domain.Receipt{}, notifications: map[string]domain.Notification{}, audits: map[string][]domain.AuditEvent{}}
+	return &Store{evidence: map[string]domain.Evidence{}, batches: map[string]domain.ReviewBatch{}, receipts: map[string][]domain.Receipt{}, notifications: map[string]domain.Notification{}, audits: map[string][]domain.AuditEvent{}, retention: domain.DefaultRetentionRule()}
+}
+
+// WithRetentionRule overrides the retention policy used when sweeping expired
+// batches. Tests use it to shrink the keep windows so archival can be exercised
+// without waiting days.
+func (s *Store) WithRetentionRule(rule domain.RetentionRule) *Store {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.retention = rule
+	return s
+}
+
+// ListExpiredBatches returns terminal batches whose retention window has elapsed
+// as of now. Used by the application sweep to drive batch archival.
+func (s *Store) ListExpiredBatches(ctx context.Context, now time.Time) ([]domain.ReviewBatch, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	result := make([]domain.ReviewBatch, 0)
+	for _, batch := range s.batches {
+		if s.retention.IsExpired(batch, now) {
+			result = append(result, copyBatch(batch))
+		}
+	}
+	sort.Slice(result, func(i, j int) bool { return result[i].UpdatedAt.Before(result[j].UpdatedAt) })
+	return result, nil
 }
 func (s *Store) SaveEvidence(ctx context.Context, e domain.Evidence) error {
 	if err := ctx.Err(); err != nil {

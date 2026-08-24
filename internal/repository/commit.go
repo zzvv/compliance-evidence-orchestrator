@@ -32,10 +32,78 @@ func (s *Store) DeleteBatch(ctx context.Context, batchID string) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if _, ok := s.batches[batchID]; !ok {
+	batch, ok := s.batches[batchID]
+	if !ok {
 		return domain.ErrNotFound
 	}
 	delete(s.batches, batchID)
 	delete(s.receipts, batchID)
+	s.purgeNotificationsLocked(batchID)
+	s.purgeAuditLocked(batch.Scope, batchID)
 	return nil
+}
+
+// PurgeNotificationsForBatch drops every notification tied to batchID. The
+// dispatcher only re-issues pending notifications, but delivered/failed records
+// are dropped too so an archived batch leaves nothing behind for export.
+func (s *Store) PurgeNotificationsForBatch(ctx context.Context, batchID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.purgeNotificationsLocked(batchID)
+	return nil
+}
+
+// PurgeAuditForBatch removes audit events that reference batchID. Events are
+// partitioned by scope, so the sibling batches within the same scope are kept.
+func (s *Store) PurgeAuditForBatch(ctx context.Context, batchID string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for scopeKey, events := range s.audits {
+		filtered := s.audits[scopeKey][:0]
+		changed := false
+		for _, event := range events {
+			if event.BatchID == batchID {
+				changed = true
+				continue
+			}
+			filtered = append(filtered, event)
+		}
+		if changed {
+			s.audits[scopeKey] = filtered
+		}
+	}
+	return nil
+}
+
+func (s *Store) purgeNotificationsLocked(batchID string) {
+	for id, notification := range s.notifications {
+		if notification.BatchID == batchID {
+			delete(s.notifications, id)
+		}
+	}
+}
+
+func (s *Store) purgeAuditLocked(scope domain.Scope, batchID string) {
+	events, ok := s.audits[scope.Key()]
+	if !ok {
+		return
+	}
+	filtered := s.audits[scope.Key()][:0]
+	changed := false
+	for _, event := range events {
+		if event.BatchID == batchID {
+			changed = true
+			continue
+		}
+		filtered = append(filtered, event)
+	}
+	if changed {
+		s.audits[scope.Key()] = filtered
+	}
 }
