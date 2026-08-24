@@ -21,7 +21,7 @@ func (s *Store) Snapshot(ctx context.Context) (Snapshot, error) {
 	defer s.mu.RUnlock()
 	snapshot := Snapshot{Receipts: map[string][]domain.Receipt{}, Audits: map[string][]domain.AuditEvent{}}
 	for _, value := range s.evidence {
-		snapshot.Evidence = append(snapshot.Evidence, value)
+		snapshot.Evidence = append(snapshot.Evidence, copyEvidence(value))
 	}
 	for _, value := range s.batches {
 		snapshot.Batches = append(snapshot.Batches, copyBatch(value))
@@ -49,7 +49,7 @@ func (s *Store) Restore(ctx context.Context, snapshot Snapshot) error {
 	s.notifications = map[string]domain.Notification{}
 	s.audits = map[string][]domain.AuditEvent{}
 	for _, value := range snapshot.Evidence {
-		s.evidence[value.Scope().Key()+":"+value.ID] = value
+		s.evidence[value.Scope().Key()+":"+value.ID] = copyEvidence(value)
 	}
 	for _, value := range snapshot.Batches {
 		s.batches[value.ID] = copyBatch(value)

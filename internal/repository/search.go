@@ -50,7 +50,7 @@ func (s *Store) FindEvidenceByReference(ctx context.Context, scope domain.Scope,
 	values := make([]domain.Evidence, 0)
 	for _, evidence := range s.evidence {
 		if evidence.Scope() == scope && evidence.Reference == needle {
-			values = append(values, evidence)
+			values = append(values, copyEvidence(evidence))
 		}
 	}
 	sort.Slice(values, func(left, right int) bool { return values[left].CreatedAt.Before(values[right].CreatedAt) })

@@ -25,7 +25,7 @@ func (s *Store) SaveEvidence(ctx context.Context, e domain.Evidence) error {
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.evidence[e.Scope().Key()+":"+e.ID] = e
+	s.evidence[e.Scope().Key()+":"+e.ID] = copyEvidence(e)
 	return nil
 }
 func (s *Store) ListEvidence(ctx context.Context, scope domain.Scope) ([]domain.Evidence, error) {
@@ -37,7 +37,7 @@ func (s *Store) ListEvidence(ctx context.Context, scope domain.Scope) ([]domain.
 	result := []domain.Evidence{}
 	for _, item := range s.evidence {
 		if item.Scope() == scope {
-			result = append(result, item)
+			result = append(result, copyEvidence(item))
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].ID < result[j].ID })
@@ -53,7 +53,7 @@ func (s *Store) FindEvidence(ctx context.Context, scope domain.Scope, id string)
 	if !ok {
 		return domain.Evidence{}, domain.ErrNotFound
 	}
-	return item, nil
+	return copyEvidence(item), nil
 }
 func (s *Store) SaveBatch(ctx context.Context, b domain.ReviewBatch) error {
 	if err := ctx.Err(); err != nil {
@@ -160,4 +160,12 @@ func (s *Store) ListAudit(ctx context.Context, scope domain.Scope) ([]domain.Aud
 func copyBatch(batch domain.ReviewBatch) domain.ReviewBatch {
 	batch.EvidenceIDs = append([]string(nil), batch.EvidenceIDs...)
 	return batch
+}
+func copyEvidence(evidence domain.Evidence) domain.Evidence {
+	cloned := evidence
+	if evidence.ExpiresAt != nil {
+		value := *evidence.ExpiresAt
+		cloned.ExpiresAt = &value
+	}
+	return cloned
 }
