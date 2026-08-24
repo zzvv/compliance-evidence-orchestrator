@@ -5,6 +5,7 @@ import (
 	"github.com/zzvv/compliance-evidence-orchestrator/internal/domain"
 	"sort"
 	"sync"
+	"time"
 )
 
 type Store struct {
@@ -120,6 +121,26 @@ func (s *Store) SaveNotification(ctx context.Context, n domain.Notification) err
 	defer s.mu.Unlock()
 	s.notifications[n.ID] = n
 	return nil
+}
+func (s *Store) ClaimNotification(ctx context.Context, id string) (domain.Notification, error) {
+	if err := ctx.Err(); err != nil {
+		return domain.Notification{}, err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, ok := s.notifications[id]
+	if !ok {
+		return domain.Notification{}, domain.ErrNotFound
+	}
+	// 只有待发送或之前投递失败的通知可以被领取。已领取（dispatching）或已投递
+	// 的通知会拒绝第二个领取者，从而保证同一时刻仅一个实例真正投递。
+	if current.State != domain.NotificationPending && current.State != domain.NotificationFailed {
+		return domain.Notification{}, domain.ErrConflict
+	}
+	current.State = domain.NotificationDispatching
+	current.UpdatedAt = time.Now().UTC()
+	s.notifications[id] = current
+	return current, nil
 }
 func (s *Store) PendingNotifications(ctx context.Context, limit int) ([]domain.Notification, error) {
 	if err := ctx.Err(); err != nil {

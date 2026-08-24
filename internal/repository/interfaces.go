@@ -22,6 +22,7 @@ type ReceiptRepository interface {
 type NotificationRepository interface {
 	SaveNotification(context.Context, domain.Notification) error
 	PendingNotifications(context.Context, int) ([]domain.Notification, error)
+	ClaimNotification(context.Context, string) (domain.Notification, error)
 }
 type AuditRepository interface {
 	AppendAudit(context.Context, domain.AuditEvent) error

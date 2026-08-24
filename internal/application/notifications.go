@@ -2,8 +2,10 @@ package application
 
 import (
 	"context"
-	"github.com/zzvv/compliance-evidence-orchestrator/internal/domain"
+	"errors"
 	"time"
+
+	"github.com/zzvv/compliance-evidence-orchestrator/internal/domain"
 )
 
 func (s *EvidenceService) queueNotification(ctx context.Context, batch domain.ReviewBatch, recipient, event string) {
@@ -26,12 +28,22 @@ func (s *EvidenceService) DispatchPending(ctx context.Context, limit int) error 
 		if err := ctx.Err(); err != nil {
 			return err
 		}
-		if err := s.notifier.Deliver(ctx, item.Recipient, item.Event); err != nil {
-			item.MarkFailed(err, time.Now())
-		} else {
-			item.MarkDelivered(time.Now())
+		// 投递前必须先原子地领取该通知。两个调度实例可能同时读到同一份
+		// 待发送列表，只有领取成功的一方才有权投递；另一方会发现状态已
+		// 变为 dispatching 或 delivered 而跳过，避免重复投递。
+		claimed, err := s.notifications.ClaimNotification(ctx, item.ID)
+		if err != nil {
+			if errors.Is(err, domain.ErrConflict) || errors.Is(err, domain.ErrNotFound) {
+				continue
+			}
+			return err
 		}
-		if err := s.notifications.SaveNotification(ctx, item); err != nil {
+		if err := s.notifier.Deliver(ctx, claimed.Recipient, claimed.Event); err != nil {
+			claimed.MarkFailed(err, time.Now())
+		} else {
+			claimed.MarkDelivered(time.Now())
+		}
+		if err := s.notifications.SaveNotification(ctx, claimed); err != nil {
 			return err
 		}
 	}

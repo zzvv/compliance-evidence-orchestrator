@@ -5,9 +5,10 @@ import "time"
 type NotificationState string
 
 const (
-	NotificationPending   NotificationState = "pending"
-	NotificationDelivered NotificationState = "delivered"
-	NotificationFailed    NotificationState = "failed"
+	NotificationPending     NotificationState = "pending"
+	NotificationDispatching NotificationState = "dispatching"
+	NotificationDelivered   NotificationState = "delivered"
+	NotificationFailed      NotificationState = "failed"
 )
 
 type Notification struct {
