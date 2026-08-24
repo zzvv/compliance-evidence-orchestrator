@@ -33,7 +33,7 @@ func (s *Store) Snapshot(ctx context.Context) (Snapshot, error) {
 		snapshot.Notifications = append(snapshot.Notifications, value)
 	}
 	for key, values := range s.audits {
-		snapshot.Audits[key] = append([]domain.AuditEvent(nil), values...)
+		snapshot.Audits[key] = copyAuditEvents(values)
 	}
 	return snapshot, nil
 }
@@ -61,7 +61,27 @@ func (s *Store) Restore(ctx context.Context, snapshot Snapshot) error {
 		s.notifications[value.ID] = value
 	}
 	for key, values := range snapshot.Audits {
-		s.audits[key] = append([]domain.AuditEvent(nil), values...)
+		s.audits[key] = copyAuditEvents(values)
 	}
 	return nil
+}
+
+// copyAuditEvent 复制审计事件并深拷贝其 Attributes 映射。快照与恢复流程
+// 需要独立编辑审计事件而不污染仓储内已保存的审计轨迹，因此 Attributes 不能与
+// 原事件共享底层映射。
+func copyAuditEvent(event domain.AuditEvent) domain.AuditEvent {
+	attributes := make(map[string]string, len(event.Attributes))
+	for key, value := range event.Attributes {
+		attributes[key] = value
+	}
+	event.Attributes = attributes
+	return event
+}
+
+func copyAuditEvents(events []domain.AuditEvent) []domain.AuditEvent {
+	copies := make([]domain.AuditEvent, len(events))
+	for i, event := range events {
+		copies[i] = copyAuditEvent(event)
+	}
+	return copies
 }
