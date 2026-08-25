@@ -27,7 +27,10 @@ func (s *EvidenceService) BatchDetail(ctx context.Context, batchID string) (Batc
 	}
 	detail := BatchDetail{Batch: batch, Evidence: evidence, Receipts: receipts}
 	if s.audits != nil {
-		detail.Audit, _ = s.audits.ListAudit(ctx, batch.Scope)
+		detail.Audit, err = s.audits.ListAudit(ctx, batch.Scope)
+		if err != nil {
+			return BatchDetail{}, err
+		}
 	}
 	return detail, nil
 }

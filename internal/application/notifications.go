@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-func (s *EvidenceService) queueNotification(ctx context.Context, batch domain.ReviewBatch, recipient, event string) {
+func (s *EvidenceService) queueNotification(ctx context.Context, batch domain.ReviewBatch, recipient, event string) error {
 	if s.notifications == nil {
-		return
+		return nil
 	}
 	now := time.Now()
 	notification := domain.Notification{ID: s.ids.New("notice"), BatchID: batch.ID, Recipient: recipient, Event: event, State: domain.NotificationPending, CreatedAt: now, UpdatedAt: now}
-	_ = s.notifications.SaveNotification(ctx, notification)
+	return s.notifications.SaveNotification(ctx, notification)
 }
 func (s *EvidenceService) DispatchPending(ctx context.Context, limit int) error {
 	if s.notifications == nil {

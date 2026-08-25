@@ -56,6 +56,9 @@ func (s *EvidenceService) CreateBatch(ctx context.Context, command CreateBatchCo
 	return batch, nil
 }
 func (s *EvidenceService) StartReview(ctx context.Context, batchID, actor string) (domain.ReviewBatch, error) {
+	if err := s.ValidateBatch(ctx, batchID); err != nil {
+		return domain.ReviewBatch{}, err
+	}
 	batch, err := s.batches.FindBatch(ctx, batchID)
 	if err != nil {
 		return domain.ReviewBatch{}, err
@@ -96,7 +99,9 @@ func (s *EvidenceService) DecideBatch(ctx context.Context, command DecideBatchCo
 	}
 	s.appendAudit(ctx, batch.Scope, batch.ID, event, command.Actor)
 	if command.Recipient != "" {
-		s.queueNotification(ctx, batch, command.Recipient, event)
+		if err := s.queueNotification(ctx, batch, command.Recipient, event); err != nil {
+			return domain.ReviewBatch{}, err
+		}
 	}
 	return batch, nil
 }
