@@ -56,9 +56,6 @@ func (s *EvidenceService) CreateBatch(ctx context.Context, command CreateBatchCo
 	return batch, nil
 }
 func (s *EvidenceService) StartReview(ctx context.Context, batchID, actor string) (domain.ReviewBatch, error) {
-	if err := s.ValidateBatch(ctx, batchID); err != nil {
-		return domain.ReviewBatch{}, err
-	}
 	batch, err := s.batches.FindBatch(ctx, batchID)
 	if err != nil {
 		return domain.ReviewBatch{}, err
