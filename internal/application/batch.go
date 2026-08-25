@@ -99,9 +99,7 @@ func (s *EvidenceService) DecideBatch(ctx context.Context, command DecideBatchCo
 	}
 	s.appendAudit(ctx, batch.Scope, batch.ID, event, command.Actor)
 	if command.Recipient != "" {
-		if err := s.queueNotification(ctx, batch, command.Recipient, event); err != nil {
-			return domain.ReviewBatch{}, err
-		}
+		s.queueNotification(ctx, batch, command.Recipient, event)
 	}
 	return batch, nil
 }
