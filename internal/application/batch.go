@@ -88,10 +88,14 @@ func (s *EvidenceService) DecideBatch(ctx context.Context, command DecideBatchCo
 	if err := batch.Transition(target, command.Reason, time.Now()); err != nil {
 		return domain.ReviewBatch{}, err
 	}
-	if err := s.batches.SaveBatch(ctx, batch); err != nil {
+	receipt := domain.NewReceipt(s.ids.New("receipt"), batch.ID, kind, fmt.Sprintf("review %s", target), time.Now())
+	if committer, ok := s.batches.(repository.DecisionCommitter); ok {
+		if err := committer.CommitDecision(ctx, batch, receipt); err != nil {
+			return domain.ReviewBatch{}, err
+		}
+	} else if err := s.batches.SaveBatch(ctx, batch); err != nil {
 		return domain.ReviewBatch{}, err
-	}
-	if err := s.receipts.AppendReceipt(ctx, domain.NewReceipt(s.ids.New("receipt"), batch.ID, kind, fmt.Sprintf("review %s", target), time.Now())); err != nil {
+	} else if err := s.receipts.AppendReceipt(ctx, receipt); err != nil {
 		return domain.ReviewBatch{}, err
 	}
 	s.appendAudit(ctx, batch.Scope, batch.ID, event, command.Actor)

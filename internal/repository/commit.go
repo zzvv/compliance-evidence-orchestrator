@@ -9,6 +9,12 @@ import (
 type SubmissionCommitter interface {
 	CommitSubmission(context.Context, domain.ReviewBatch, domain.Receipt) error
 }
+// DecisionCommitter makes an approve/reject decision and its receipt visible
+// together, so a failed receipt write cannot leave a batch stranded in a
+// terminal state without the matching decision receipt.
+type DecisionCommitter interface {
+	CommitDecision(context.Context, domain.ReviewBatch, domain.Receipt) error
+}
 
 func (s *Store) CommitSubmission(ctx context.Context, batch domain.ReviewBatch, receipt domain.Receipt) error {
 	if err := ctx.Err(); err != nil {
@@ -17,6 +23,26 @@ func (s *Store) CommitSubmission(ctx context.Context, batch domain.ReviewBatch, 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.batches[batch.ID]; exists {
+		return domain.ErrConflict
+	}
+	if receipt.BatchID != batch.ID {
+		return domain.ErrConflict
+	}
+	s.batches[batch.ID] = copyBatch(batch)
+	s.receipts[batch.ID] = append(s.receipts[batch.ID], receipt)
+	return nil
+}
+func (s *Store) CommitDecision(ctx context.Context, batch domain.ReviewBatch, receipt domain.Receipt) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	current, ok := s.batches[batch.ID]
+	if !ok {
+		return domain.ErrNotFound
+	}
+	if current.Revision >= batch.Revision {
 		return domain.ErrConflict
 	}
 	if receipt.BatchID != batch.ID {
