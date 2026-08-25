@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 type ReviewPolicy struct {
 	RequireCurrentEvidence bool
@@ -20,7 +23,7 @@ func (p ReviewPolicy) Validate(evidence []Evidence) error {
 	}
 	certificate := false
 	for _, item := range evidence {
-		if p.RequireCurrentEvidence && item.IsExpired(item.CreatedAt) {
+		if p.RequireCurrentEvidence && item.IsExpired(time.Now()) {
 			return fmt.Errorf("evidence %s is expired", item.ID)
 		}
 		if item.Kind == Certificate {
