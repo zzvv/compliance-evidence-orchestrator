@@ -11,6 +11,7 @@ type EvidenceService struct {
 	receipts      repository.ReceiptRepository
 	notifications repository.NotificationRepository
 	audits        repository.AuditRepository
+	scopeView     repository.ScopeViewReader
 	notifier      Notifier
 	ids           IDGenerator
 	policy        domain.ReviewPolicy
@@ -23,6 +24,9 @@ func NewEvidenceService(evidence repository.EvidenceRepository, batches reposito
 	}
 	if a, ok := evidence.(repository.AuditRepository); ok {
 		service.audits = a
+	}
+	if v, ok := evidence.(repository.ScopeViewReader); ok {
+		service.scopeView = v
 	}
 	return service
 }
