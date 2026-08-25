@@ -102,6 +102,24 @@ func (h *Handler) cancelBatch(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, batch)
 }
+func (h *Handler) workPlan(w http.ResponseWriter, r *http.Request) {
+	scope, err := domain.NewScope(r.PathValue("project"), r.PathValue("material"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	options, err := application.ParseWorkPlanOptions(r.URL.Query().Get("options"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	plan, err := h.service.WorkPlan(r.Context(), scope, options)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, plan)
+}
 func decode(w http.ResponseWriter, r *http.Request, target any) bool {
 	if r.Body == nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "request body is required"})
