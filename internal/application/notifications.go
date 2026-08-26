@@ -31,7 +31,9 @@ func (s *EvidenceService) DispatchPending(ctx context.Context, limit int) error 
 		} else {
 			item.MarkDelivered(time.Now())
 		}
-		if err := s.notifications.SaveNotification(ctx, item); err != nil {
+		// Delivery is an external side effect. Once it returns, preserve its
+		// outcome even when the dispatcher was cancelled in the meantime.
+		if err := s.notifications.SaveNotification(context.WithoutCancel(ctx), item); err != nil {
 			return err
 		}
 	}
