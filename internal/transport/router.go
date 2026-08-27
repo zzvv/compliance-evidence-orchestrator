@@ -15,6 +15,7 @@ func NewRouter(service *application.EvidenceService) http.Handler {
 	mux.HandleFunc("POST /v1/batches/{id}/start", handler.startReview)
 	mux.HandleFunc("POST /v1/batches/{id}/decision", handler.decideBatch)
 	mux.HandleFunc("POST /v1/batches/{id}/cancel", handler.cancelBatch)
+	mux.HandleFunc("GET /v1/scopes/{project}/{material}/summary", handler.scopeSummary)
 	mux.HandleFunc("GET /v1/scopes/{project}/{material}/work-plan", handler.workPlan)
 	mux.HandleFunc("GET /", handler.console)
 	return logging(mux)

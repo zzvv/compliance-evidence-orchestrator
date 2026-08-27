@@ -120,6 +120,19 @@ func (h *Handler) workPlan(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, plan)
 }
+func (h *Handler) scopeSummary(w http.ResponseWriter, r *http.Request) {
+	scope, err := domain.NewScope(r.PathValue("project"), r.PathValue("material"))
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	summary, err := h.service.ScopeSummary(r.Context(), scope)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
+}
 func decode(w http.ResponseWriter, r *http.Request, target any) bool {
 	if r.Body == nil {
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "request body is required"})
