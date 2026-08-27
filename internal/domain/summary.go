@@ -3,12 +3,13 @@ package domain
 import "time"
 
 type ScopeSummary struct {
-	Scope           Scope     `json:"scope"`
-	TotalEvidence   int       `json:"total_evidence"`
-	OpenBatches     int       `json:"open_batches"`
-	ApprovedBatches int       `json:"approved_batches"`
-	RejectedBatches int       `json:"rejected_batches"`
-	LastActivityAt  time.Time `json:"last_activity_at"`
+	Scope            Scope     `json:"scope"`
+	TotalEvidence    int       `json:"total_evidence"`
+	OpenBatches      int       `json:"open_batches"`
+	ApprovedBatches  int       `json:"approved_batches"`
+	RejectedBatches  int       `json:"rejected_batches"`
+	CancelledBatches int       `json:"cancelled_batches"`
+	LastActivityAt   time.Time `json:"last_activity_at"`
 }
 
 func SummarizeScope(scope Scope, evidence []Evidence, batches []ReviewBatch) ScopeSummary {
@@ -20,6 +21,7 @@ func SummarizeScope(scope Scope, evidence []Evidence, batches []ReviewBatch) Sco
 		case BatchRejected:
 			summary.RejectedBatches++
 		case BatchCancelled:
+			summary.CancelledBatches++
 		default:
 			summary.OpenBatches++
 		}
@@ -30,3 +32,7 @@ func SummarizeScope(scope Scope, evidence []Evidence, batches []ReviewBatch) Sco
 	return summary
 }
 func (s ScopeSummary) HasOpenReview() bool { return s.OpenBatches > 0 }
+
+func (s ScopeSummary) CompletedBatches() int {
+	return s.ApprovedBatches + s.RejectedBatches + s.CancelledBatches
+}
